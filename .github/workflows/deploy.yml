@@ -70,8 +70,9 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          # Update image in deployment manifest (lowercase repo name required)
-          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}:sha-${{ github.sha }}" | tr '[:upper:]' '[:lower:]')
+          # Update image in deployment manifest (use short SHA, lowercase repo)
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_NAME="ghcr.io/abdalkaderdev/soapbox-developer-portal:sha-${SHORT_SHA}"
           sed -i "s|image: .*developer-portal.*|image: ${IMAGE_NAME}|g" k8s/deployment.yaml
 
           # Apply the manifests
