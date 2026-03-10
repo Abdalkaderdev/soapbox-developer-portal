@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: developer-portal
-          image: registry.digitalocean.com/soapbox-registry/developer-portal:latest
+          image: ghcr.io/abdalkaderdev/soapbox-developer-portal:latest
           ports:
             - containerPort: 3000
           env:
@@ -52,7 +52,7 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
       imagePullSecrets:
-        - name: soapbox-registry
+        - name: ghcr-auth
 ---
 apiVersion: v1
 kind: Service
