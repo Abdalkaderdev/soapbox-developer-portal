@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { BookOpen, Key, Code, Webhook, Package } from "lucide-react";
+import { BookOpen, Key, Code, Webhook, Package, LogIn } from "lucide-react";
 
 const navigation = [
   { name: "Getting Started", href: "/docs/getting-started", icon: BookOpen },
   { name: "Authentication", href: "/docs/authentication", icon: Key },
+  { name: "OAuth Provider", href: "/docs/oauth-provider", icon: LogIn },
   { name: "API Reference", href: "/docs/api-reference", icon: Code },
   { name: "Webhooks", href: "/docs/webhooks", icon: Webhook },
   { name: "SDK", href: "/docs/sdk", icon: Package },
