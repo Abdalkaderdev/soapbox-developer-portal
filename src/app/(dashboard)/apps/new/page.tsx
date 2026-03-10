@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Plus, X, Info } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const availableScopes = [
   { id: "read:churches", name: "Read Churches", description: "Read church and community information" },
@@ -24,12 +25,15 @@ const availableScopes = [
 ];
 
 export default function NewAppPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [redirectUri, setRedirectUri] = useState("");
   const [redirectUris, setRedirectUris] = useState<string[]>([]);
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const addRedirectUri = () => {
     if (redirectUri && !redirectUris.includes(redirectUri)) {
@@ -52,8 +56,33 @@ export default function NewAppPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Submit to API
-    console.log({ name, description, websiteUrl, redirectUris, selectedScopes });
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/apps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          description: description || undefined,
+          scopes: selectedScopes,
+          redirectUris,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create app");
+      }
+
+      const data = await response.json();
+      router.push(`/apps/${data.data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create app");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -199,10 +228,17 @@ export default function NewAppPage() {
             </CardContent>
           </Card>
 
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
           {/* Submit */}
           <div className="flex items-center gap-4">
-            <Button type="submit" size="lg" disabled={!name}>
-              Create App
+            <Button type="submit" size="lg" disabled={!name || loading}>
+              {loading ? "Creating..." : "Create App"}
             </Button>
             <Link href="/apps">
               <Button type="button" variant="outline" size="lg">

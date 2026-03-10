@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -9,59 +10,113 @@ import {
   AppWindow,
   Plus,
   Search,
-  MoreVertical,
   Copy,
-  Trash2,
   Edit,
-  ExternalLink,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 
-const apps = [
-  {
-    id: "1",
-    name: "Church Connect",
-    description: "Mobile app for church members to stay connected",
-    clientId: "sb_app_abc123def456",
-    status: "active",
-    scopes: ["read:churches", "read:events", "read:users"],
-    createdAt: "2024-01-15",
-    lastUsed: "2 hours ago",
-    requests30d: 5420,
-  },
-  {
-    id: "2",
-    name: "Event Manager",
-    description: "Event registration and management system",
-    clientId: "sb_app_def456ghi789",
-    status: "active",
-    scopes: ["read:events", "write:events", "read:users"],
-    createdAt: "2024-02-20",
-    lastUsed: "1 day ago",
-    requests30d: 3210,
-  },
-  {
-    id: "3",
-    name: "Prayer Wall Widget",
-    description: "Embeddable prayer request widget for websites",
-    clientId: "sb_app_ghi789jkl012",
-    status: "inactive",
-    scopes: ["read:prayers", "write:prayers"],
-    createdAt: "2024-03-10",
-    lastUsed: "1 week ago",
-    requests30d: 890,
-  },
-];
+interface App {
+  id: number;
+  clientId: string;
+  name: string;
+  description: string | null;
+  scopes: string[];
+  tier: string;
+  isActive: boolean;
+  requestCount?: number;
+  createdAt: string;
+}
 
 export default function AppsPage() {
+  const [apps, setApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchApps() {
+      try {
+        const response = await fetch("/api/apps");
+        if (response.ok) {
+          const data = await response.json();
+          setApps(data.data || []);
+        } else if (response.status === 401) {
+          setError("Please sign in to view your apps");
+        } else {
+          setError("Failed to load apps");
+        }
+      } catch {
+        setError("Failed to load apps");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchApps();
+  }, []);
 
   const filteredApps = apps.filter(
     (app) =>
       app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      app.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (app.description && app.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  function copyToClipboard(text: string, key: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  }
+
+  function formatDate(dateString: string) {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="My Apps" description="Manage your registered applications" />
+        <div className="p-6 space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="animate-pulse flex gap-4">
+                  <div className="h-12 w-12 bg-gray-200 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 bg-gray-200 rounded w-48" />
+                    <div className="h-4 bg-gray-200 rounded w-96" />
+                    <div className="h-4 bg-gray-200 rounded w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="My Apps" description="Manage your registered applications" />
+        <div className="p-6">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <p className="text-gray-500 mb-4">{error}</p>
+              <Link href="/login">
+                <Button>Sign In</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -104,25 +159,25 @@ export default function AppsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-lg">{app.name}</h3>
                         <Badge
-                          variant={
-                            app.status === "active" ? "success" : "secondary"
-                          }
+                          variant={app.isActive ? "success" : "secondary"}
                         >
-                          {app.status}
+                          {app.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
-                      <p className="text-gray-500">{app.description}</p>
+                      <p className="text-gray-500">{app.description || "No description"}</p>
                       <div className="flex items-center gap-2 pt-2">
                         <code className="text-xs bg-gray-100 px-2 py-1 rounded font-mono">
                           {app.clientId}
                         </code>
                         <button
                           className="text-gray-400 hover:text-gray-600"
-                          onClick={() =>
-                            navigator.clipboard.writeText(app.clientId)
-                          }
+                          onClick={() => copyToClipboard(app.clientId, app.clientId)}
                         >
-                          <Copy className="h-4 w-4" />
+                          {copied === app.clientId ? (
+                            <Check className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -131,12 +186,9 @@ export default function AppsPage() {
                     <Link href={`/apps/${app.id}`}>
                       <Button variant="outline" size="sm">
                         <Edit className="h-4 w-4 mr-1" />
-                        Edit
+                        Manage
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
 
@@ -144,30 +196,33 @@ export default function AppsPage() {
                   <div>
                     <p className="text-gray-500">Scopes</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {app.scopes.slice(0, 2).map((scope) => (
+                      {app.scopes?.slice(0, 2).map((scope) => (
                         <Badge key={scope} variant="outline" className="text-xs">
                           {scope}
                         </Badge>
                       ))}
-                      {app.scopes.length > 2 && (
+                      {app.scopes && app.scopes.length > 2 && (
                         <Badge variant="outline" className="text-xs">
                           +{app.scopes.length - 2}
                         </Badge>
                       )}
+                      {(!app.scopes || app.scopes.length === 0) && (
+                        <span className="text-gray-400 text-xs">None</span>
+                      )}
                     </div>
                   </div>
                   <div>
-                    <p className="text-gray-500">Created</p>
-                    <p className="font-medium mt-1">{app.createdAt}</p>
+                    <p className="text-gray-500">Tier</p>
+                    <p className="font-medium mt-1">{app.tier}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Last Used</p>
-                    <p className="font-medium mt-1">{app.lastUsed}</p>
+                    <p className="text-gray-500">Created</p>
+                    <p className="font-medium mt-1">{formatDate(app.createdAt)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Requests (30d)</p>
                     <p className="font-medium mt-1">
-                      {app.requests30d.toLocaleString()}
+                      {(app.requestCount || 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
