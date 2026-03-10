@@ -58,11 +58,13 @@ jobs:
       - name: Save DigitalOcean kubeconfig
         run: doctl kubernetes cluster kubeconfig save ${{ secrets.K8S_CLUSTER_NAME }}
 
-      - name: Update deployment image
+      - name: Deploy to Kubernetes
         run: |
-          kubectl set image deployment/developer-portal \
-            developer-portal=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -n soapbox
+          # Update image tag in deployment manifest
+          sed -i 's|developer-portal:latest|developer-portal:${{ github.sha }}|g' k8s/deployment.yaml
+
+          # Apply the manifests
+          kubectl apply -f k8s/deployment.yaml
 
       - name: Wait for rollout
         run: |
@@ -71,3 +73,4 @@ jobs:
       - name: Verify deployment
         run: |
           kubectl get pods -n soapbox -l app=developer-portal
+          echo "Developer Portal deployed to https://developers.soapboxsuperapp.com"
