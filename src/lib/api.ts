@@ -6,6 +6,31 @@ export async function getServerSession() {
   return await auth();
 }
 
+export class APIError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number,
+    public code?: string
+  ) {
+    super(message);
+    this.name = "APIError";
+  }
+}
+
+// User-friendly error messages for common scenarios
+const ERROR_MESSAGES: Record<number, string> = {
+  400: "Invalid request. Please check your input and try again.",
+  401: "Your session has expired. Please sign in again.",
+  403: "You don't have permission to perform this action.",
+  404: "The requested resource was not found.",
+  409: "This action conflicts with existing data.",
+  422: "The provided data is invalid.",
+  429: "Too many requests. Please wait a moment and try again.",
+  500: "Something went wrong on our end. Please try again later.",
+  502: "Service temporarily unavailable. Please try again later.",
+  503: "Service temporarily unavailable. Please try again later.",
+};
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {}
@@ -13,18 +38,36 @@ export async function apiRequest<T>(
   const session = await getServerSession();
   const accessToken = (session as { accessToken?: string })?.accessToken;
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-      ...options.headers,
-    },
-  });
+  if (!accessToken) {
+    throw new APIError("Authentication required. Please sign in.", 401, "UNAUTHORIZED");
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    // Network error
+    throw new APIError(
+      "Unable to connect to the server. Please check your internet connection.",
+      0,
+      "NETWORK_ERROR"
+    );
+  }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    const userMessage =
+      errorData.message ||
+      ERROR_MESSAGES[response.status] ||
+      `Request failed (${response.status})`;
+    throw new APIError(userMessage, response.status, errorData.code);
   }
 
   if (response.status === 204) return undefined as T;
