@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: abdalkaderdev/soapbox-developer-portal
 
 jobs:
   build:
@@ -70,8 +70,9 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          # Update image in deployment manifest
-          sed -i 's|image: .*developer-portal.*|image: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}|g' k8s/deployment.yaml
+          # Update image in deployment manifest (lowercase repo name required)
+          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}:sha-${{ github.sha }}" | tr '[:upper:]' '[:lower:]')
+          sed -i "s|image: .*developer-portal.*|image: ${IMAGE_NAME}|g" k8s/deployment.yaml
 
           # Apply the manifests
           kubectl apply -f k8s/deployment.yaml
