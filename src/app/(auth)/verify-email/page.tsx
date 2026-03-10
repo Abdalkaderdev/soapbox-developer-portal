@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
-export default function VerifyEmailPage() {
+function VerifyEmailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
@@ -160,106 +160,150 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center mb-4">
-            <svg
-              className="h-6 w-6 text-orange-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center mb-4">
+          <svg
+            className="h-6 w-6 text-orange-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+        <CardTitle className="text-2xl">Verify Your Email</CardTitle>
+        <CardDescription>
+          {email ? (
+            <>
+              We sent a 6-digit verification code to{" "}
+              <span className="font-medium text-gray-700">{email}</span>
+            </>
+          ) : (
+            "Enter the 6-digit verification code sent to your email"
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+              {success}
+            </div>
+          )}
+
+          {/* OTP Input */}
+          <div className="flex justify-center gap-2">
+            {code.map((digit, index) => (
+              <input
+                key={index}
+                ref={(el) => { inputRefs.current[index] = el; }}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleInputChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
+                disabled={loading || !!success}
+                className="w-12 h-14 text-center text-2xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
-            </svg>
+            ))}
           </div>
-          <CardTitle className="text-2xl">Verify Your Email</CardTitle>
-          <CardDescription>
-            {email ? (
-              <>
-                We sent a 6-digit verification code to{" "}
-                <span className="font-medium text-gray-700">{email}</span>
-              </>
-            ) : (
-              "Enter the 6-digit verification code sent to your email"
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                {success}
-              </div>
-            )}
 
-            {/* OTP Input */}
-            <div className="flex justify-center gap-2">
-              {code.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => { inputRefs.current[index] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleInputChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={handlePaste}
-                  disabled={loading || !!success}
-                  className="w-12 h-14 text-center text-2xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
-                />
-              ))}
-            </div>
+          <Button
+            type="button"
+            className="w-full"
+            disabled={loading || code.some(d => d === "") || !!success}
+            onClick={() => handleSubmit()}
+          >
+            {loading ? "Verifying..." : "Verify Email"}
+          </Button>
 
-            <Button
+          {/* Resend Code */}
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-2">
+              Didn&apos;t receive the code?
+            </p>
+            <button
               type="button"
-              className="w-full"
-              disabled={loading || code.some(d => d === "") || !!success}
-              onClick={() => handleSubmit()}
+              onClick={handleResendCode}
+              disabled={resending || resendCooldown > 0 || !email}
+              className="text-orange-600 hover:text-orange-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-              {loading ? "Verifying..." : "Verify Email"}
-            </Button>
-
-            {/* Resend Code */}
-            <div className="text-center">
-              <p className="text-sm text-gray-500 mb-2">
-                Didn&apos;t receive the code?
-              </p>
-              <button
-                type="button"
-                onClick={handleResendCode}
-                disabled={resending || resendCooldown > 0 || !email}
-                className="text-orange-600 hover:text-orange-700 text-sm font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                {resending
-                  ? "Sending..."
-                  : resendCooldown > 0
-                  ? `Resend code in ${resendCooldown}s`
-                  : "Resend Code"}
-              </button>
-            </div>
-
-            <div className="text-center text-sm border-t pt-4">
-              <span className="text-gray-500">Wrong email? </span>
-              <Link href="/register" className="text-orange-600 hover:underline">
-                Go back to register
-              </Link>
-            </div>
+              {resending
+                ? "Sending..."
+                : resendCooldown > 0
+                ? `Resend code in ${resendCooldown}s`
+                : "Resend Code"}
+            </button>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="text-center text-sm border-t pt-4">
+            <span className="text-gray-500">Wrong email? </span>
+            <Link href="/register" className="text-orange-600 hover:underline">
+              Go back to register
+            </Link>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function VerifyEmailFallback() {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="text-center">
+        <div className="mx-auto h-12 w-12 rounded-lg bg-orange-100 flex items-center justify-center mb-4">
+          <svg
+            className="h-6 w-6 text-orange-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+        <CardTitle className="text-2xl">Verify Your Email</CardTitle>
+        <CardDescription>Loading...</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6 animate-pulse">
+          <div className="flex justify-center gap-2">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="w-12 h-14 bg-gray-200 rounded-lg" />
+            ))}
+          </div>
+          <div className="h-10 bg-gray-200 rounded" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <Suspense fallback={<VerifyEmailFallback />}>
+        <VerifyEmailForm />
+      </Suspense>
     </div>
   );
 }
